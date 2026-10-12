@@ -1,0 +1,65 @@
+name: Build Singularity
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Check out Singularity
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          brew install ldid dpkg
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git "$HOME/theos"
+          git clone https://github.com/theos/sdks.git "$HOME/theos/sdks"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+      - name: Build rootful package
+        run: |
+          export THEOS="$HOME/theos"
+          make clean
+          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootful
+
+      - name: Verify package
+        run: |
+          set -eu
+
+          DEB="$(find packages -name '*.deb' -print -quit)"
+
+          if [ -z "$DEB" ]; then
+            echo "ERROR: No .deb package was generated."
+            exit 1
+          fi
+
+          echo "Package: $DEB"
+          dpkg-deb --info "$DEB"
+          dpkg-deb --contents "$DEB"
+
+          if dpkg-deb --contents "$DEB" | grep -q '/var/jb/'; then
+            echo "ERROR: Rootless paths detected."
+            exit 1
+          fi
+
+          if ! dpkg-deb --contents "$DEB" | grep -q './usr/bin/singularity'; then
+            echo "ERROR: Expected executable is missing."
+            exit 1
+          fi
+
+          echo "Package layout checks passed."
+
+      - name: Upload Debian package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Singularity-rootful-deb
+          path: packages/*.deb
+          if-no-files-found: error
