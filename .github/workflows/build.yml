@@ -44,11 +44,12 @@ jobs:
 
           echo "THEOS=$THEOS" >> "$GITHUB_ENV"
 
-      - name: Build rootful package
+      - name: Build package
+        shell: bash
         run: |
           set -euo pipefail
           make clean
-          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootful
+          make package FINALPACKAGE=1
 
       - name: Verify package
         shell: bash
@@ -81,6 +82,6 @@ jobs:
       - name: Upload Debian package
         uses: actions/upload-artifact@v4
         with:
-          name: Singularity-rootful-deb
+          name: Singularity-deb
           path: packages/*.deb
           if-no-files-found: error
