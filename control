@@ -1,0 +1,9 @@
+Package: com.singularity.rejailbreak
+Name: Singularity
+Version: 0.1.0
+Architecture: iphoneos-arm
+Description: Singularity ARM64 compatibility and diagnostic foundation.
+Maintainer: Singularity Project
+Author: Singularity Project
+Section: Utilities
+Priority: optional
