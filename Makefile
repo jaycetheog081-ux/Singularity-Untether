@@ -1,8 +1,6 @@
 TARGET := iphone:clang:latest:12.0
 ARCHS = arm64
 
-THEOS_PACKAGE_SCHEME = rootful
-
 include $(THEOS)/makefiles/common.mk
 
 TOOL_NAME = singularity
