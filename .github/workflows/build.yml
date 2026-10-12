@@ -19,20 +19,41 @@ jobs:
           brew install ldid dpkg
 
       - name: Install Theos
+        shell: bash
         run: |
-          git clone --recursive https://github.com/theos/theos.git "$HOME/theos"
-          git clone https://github.com/theos/sdks.git "$HOME/theos/sdks"
-          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+          set -euo pipefail
+
+          export THEOS="$HOME/theos"
+
+          if [ ! -d "$THEOS/makefiles" ]; then
+            git clone --recursive https://github.com/theos/theos.git "$THEOS"
+          fi
+
+          mkdir -p "$THEOS/sdks"
+
+          if [ -z "$(find "$THEOS/sdks" -maxdepth 1 -type d -name '*.sdk' -print -quit)" ]; then
+            git clone https://github.com/theos/sdks.git "$RUNNER_TEMP/theos-sdks"
+            find "$RUNNER_TEMP/theos-sdks" -maxdepth 1 -type d -name '*.sdk' \
+              -exec mv {} "$THEOS/sdks/" \;
+          fi
+
+          if [ -z "$(find "$THEOS/sdks" -maxdepth 1 -type d -name '*.sdk' -print -quit)" ]; then
+            echo "ERROR: No iOS SDKs were installed."
+            exit 1
+          fi
+
+          echo "THEOS=$THEOS" >> "$GITHUB_ENV"
 
       - name: Build rootful package
         run: |
-          export THEOS="$HOME/theos"
+          set -euo pipefail
           make clean
           make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootful
 
       - name: Verify package
+        shell: bash
         run: |
-          set -eu
+          set -euo pipefail
 
           DEB="$(find packages -name '*.deb' -print -quit)"
 
@@ -50,7 +71,7 @@ jobs:
             exit 1
           fi
 
-          if ! dpkg-deb --contents "$DEB" | grep -q './usr/bin/singularity'; then
+          if ! dpkg-deb --contents "$DEB" | grep -q 'usr/bin/singularity'; then
             echo "ERROR: Expected executable is missing."
             exit 1
           fi
